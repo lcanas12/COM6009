@@ -1,10 +1,7 @@
 """
 @author: Eurus.T
 """
-from asyncio.windows_events import NULL
 from enum import Enum
-from random import random
-from matplotlib.cbook import report_memory
 import numpy as np
 
 
@@ -42,12 +39,12 @@ class Rabbit:
     pregnancy_days = -1
     infected_days = -1
     maxage = 3650
-    def __init__(self,position,age):
+    def __init__(self,position,age,rhd_status=None):
         self.position = position
         self.age = age
-        self.gender = np.randint(0,2) ## 1 is male, 0 is female
+        self.gender = np.random.randint(0,2) ## 1 is male, 0 is female
         self.death = False
-        self.rhd_status = RHD_Status.Susceptible
+        self.rhd_status = RHD_Status.Susceptible if rhd_status == None else rhd_status
         if age < 90:
             self.speed = 0
             self.type = AgentType.Infants
@@ -64,7 +61,7 @@ class Rabbit:
     def move(self, env):
         if self.speed > 0:
             d = np.random.rand()*2*np.pi
-            delta = np.round(np.array([np.cos(d),np.sin(d)]) * random.randint(0, self.speed + 1)) 
+            delta = np.round(np.array([np.cos(d),np.sin(d)]) * np.random.randint(0, self.speed + 1)) 
             self.trymove(self.position + delta, env)   
         
     def die(self):
@@ -92,7 +89,7 @@ class Rabbit:
     def reproduct(self, agents):
         if self.type == AgentType.Adults and self.gender == Gender.Female and self.pregnancy_days == -1:
             same_grid_male = [a for a in agents if (a.type == AgentType.Adults and a.gender == Gender.Male and a.position == self.position)]
-            prob = np.random.random(11,83) / 100
+            prob = np.random.randint(11,83) / 100
             if len(same_grid_male) > 0 and np.random.rand() <= prob:
                 self.pregnancy_days = 0
                 
