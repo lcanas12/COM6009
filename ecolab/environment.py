@@ -1,4 +1,5 @@
 import numpy as np
+import numba
 import matplotlib.pyplot as plt
 
 class Environment:
@@ -7,7 +8,8 @@ class Environment:
         Create the environment: default size = shape, shape[0] * shape[1]
         """
         self.shape = shape
-        
+    
+    @numba.jit     
     def check_position(self, position):
         """
         returns whether the position is within the environment
