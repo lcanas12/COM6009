@@ -9,8 +9,9 @@ import numba
 
 INFANT_NATURE_MOTALITY_RATE = 0.0002
 ADULT_NATURE_MOTALITY_RATE = 0.0013
-RHD_INFECTION_PROB = 0.6
+RHD_INFECTION_PROB = 0.8
 PREGNANT_PROB = 0.4
+MAX_CAPCITY = 20 # max capcity for each grid
 class RHD_Status(Enum):
     """
     RHD_Status
@@ -43,7 +44,10 @@ class Rabbit:
     def __init__(self,position,age,infected=False):
         self.position = position
         self.age = age
-        self.gender = np.random.randint(0,2) ## 1 is male, 0 is female
+        if np.random.randint(0,2) == 1: ## 1 is male, 0 is female
+            self.gender = Gender.Male
+        else:
+            self.gender = Gender.Female
         self.death = False
         if not infected :
             self.rhd_status = RHD_Status.Susceptible
@@ -73,12 +77,14 @@ class Rabbit:
     @numba.jit    
     def die(self):
         
-        if self.rhd_status == RHD_Status.Infected and self.infected_days > 0 and self.infected_days < 3: ##infected death begins on the 2nd infected day
+        if self.rhd_status == RHD_Status.Infected and self.infected_days > 0: ##infected death begins on the 2nd infected day
             # self.death = (np.random.rand() > 0.1 * self.infected_days)
-            self.death = (np.random.rand() > 0.25)
-        
+            self.death = (np.random.rand() < np.exp(-self.infected_days))
+        if self.death == True: return 
         # nature death
-        if self.age > self.maxage: self.death = True
+        if self.age > self.maxage: 
+            self.death = True
+            return 
         if self.type == AgentType.Infants:
             self.death =  (np.random.rand() < INFANT_NATURE_MOTALITY_RATE)
         else:
@@ -90,35 +96,42 @@ class Rabbit:
     
     @numba.jit 
     def infection(self, agents):
-        nearby_agents = [a for a in agents if (a.rhd_status == RHD_Status.Infected and a.infected_days > 0 and np.abs(a.position[0] - self.position[0]) < 2 and np.abs(a.position[1] - self.position[1]) < 2)]
-        if len(nearby_agents) > 0 and np.random.rand() <= RHD_INFECTION_PROB:
+        nearby_infected_agents = [a for a in agents if (a.rhd_status == RHD_Status.Infected and a.infected_days > 0 and a.position.all() == self.position.all())]
+        # nearby_infected_agents = [a for a in agents if a.rhd_status == RHD_Status.Infected and a.infected_days > 0 and np.abs(a.position[0] - self.position[0]) < 2 and np.abs(a.position[1] - self.position[1]) < 2]
+        if len(nearby_infected_agents) > 0 and np.random.rand() <= RHD_INFECTION_PROB:
             self.infected_days = 0 ## initial day of infection
             self.rhd_status = RHD_Status.Infected
+            # print("one rabbit get infected")
+            
+            #np.abs(a.position[0] - self.position[0]) < 2 and np.abs(a.position[1] - self.position[1]) < 2)
 
-    @numba.jit 
+    # @numba.jit 
     def reproduct(self, agents):
-        same_grid_male = [a for a in agents if (a.death == False and a.type == AgentType.Adults and a.gender == Gender.Male and a.position == self.position)]
+        same_grid_male = [a for a in agents if (a.death == False and a.type == AgentType.Adults and a.gender == Gender.Male and (a.position == self.position).all())]
         prob = np.random.randint(11,83) / 100
         if len(same_grid_male) > 0 and np.random.rand() <= prob:
             self.pregnancy_days = 0
+            # print("one female adult rabbit get pregant")
     
     
     @numba.jit             
-    def born_new_rabbit(self):
+    def born_new_rabbit(self,agents,env):
         if self.pregnancy_days > 30:
-            litter_num = np.random.randint(2, 8)
-            newborn =[]
-            i = 0
-            for i in range(litter_num):
-                newborn +=  Rabbit(position = self.position, age = 1)
-                i += 1
             self.pregnancy_days = -1
-            return newborn
+            if len(agents) / env.shape[0] < MAX_CAPCITY:
+                litter_num = np.random.randint(2, 8)
+                newborn =[]
+                i = 0
+                for i in range(litter_num):
+                    newborn.append(Rabbit(position = self.position, age = 1))
+                    i += 1
+                 # print("here is newborn , number:", len(newborn))
+                return newborn
         
         return None
             
     @numba.jit 
-    def other_daily_grow(self, agents): # run this function first in each day loop
+    def other_daily_grow(self): # run this function first in each day loop
         self.age +=1
         if self.pregnancy_days > -1:
             self.pregnancy_days += 1
@@ -127,7 +140,8 @@ class Rabbit:
             self.infected_days += 1
         
         if self.infected_days > 10:
-            self.rhd_status == RHD_Status.Recoverd_Immune
+            # print("here is a new immune rabbit!")
+            self.rhd_status = RHD_Status.Recoverd_Immune
             self.infected_days = -1
             
             
