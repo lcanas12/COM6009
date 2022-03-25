@@ -1,17 +1,18 @@
+
 """
 @author: Eurus.T
 """
 from enum import Enum
 import numpy as np
 import numba
-
+import random
 
 
 INFANT_NATURE_MOTALITY_RATE = 0.0002
 ADULT_NATURE_MOTALITY_RATE = 0.0013
-RHD_INFECTION_PROB = 0.8
-PREGNANT_PROB = 0.4
-MAX_CAPCITY = 20 # max capcity for each grid
+#RHD_INFECTION_PROB = 1.27 * 10e-4
+#PREGNANT_PROB = 0.4
+MAX_CAPCITY = 40 # max capcity for each grid
 class RHD_Status(Enum):
     """
     RHD_Status
@@ -53,7 +54,7 @@ class Rabbit:
             self.rhd_status = RHD_Status.Susceptible
         else :
             self.rhd_status = RHD_Status.Infected
-            infected_days = 1
+            self.infected_days = 1
         if age < 90:
             self.speed = 0
             self.type = AgentType.Infants
@@ -96,13 +97,23 @@ class Rabbit:
     
     @numba.jit 
     def infection(self, agents):
-        nearby_infected_agents = [a for a in agents if (a.rhd_status == RHD_Status.Infected and a.infected_days > 0 and a.position.all() == self.position.all())]
-        # nearby_infected_agents = [a for a in agents if a.rhd_status == RHD_Status.Infected and a.infected_days > 0 and np.abs(a.position[0] - self.position[0]) < 2 and np.abs(a.position[1] - self.position[1]) < 2]
-        if len(nearby_infected_agents) > 0 and np.random.rand() <= RHD_INFECTION_PROB:
-            self.infected_days = 0 ## initial day of infection
-            self.rhd_status = RHD_Status.Infected
-            # print("one rabbit get infected")
+        cnt = 0
+        for a in agents:
+            if (a.type == AgentType.Adults and a.rhd_status == RHD_Status.Susceptible and (a.position == self.position).all()):
+                print("one rabbbit get infected")
+                a.infected_days = 0
+                a.rhd_status = RHD_Status.Infected
+                cnt += 1
+            if cnt == 2: break
+        # nearby_susceptible_agents = [a for a in agents if (a.rhd_status == RHD_Status.Susceptible and (a.position == self.position).all())]
+        # # nearby_infected_agents = [a for a in agents if a.rhd_status == RHD_Status.Infected and a.infected_days > 0 and np.abs(a.position[0] - self.position[0]) < 2 and np.abs(a.position[1] - self.position[1]) < 2]
+        # if len(nearby_susceptible_agents) > 0:
+        #     chosen_agent = random.sample(nearby_susceptible_agents, 2)
+        #     for a in chosen_agent:
+        #         a.infected_days = 0   ## initial day of infection
+        #         a.rhd_status = RHD_Status.Infected
             
+            # print("one rabbit get infected")
             #np.abs(a.position[0] - self.position[0]) < 2 and np.abs(a.position[1] - self.position[1]) < 2)
 
     # @numba.jit 
